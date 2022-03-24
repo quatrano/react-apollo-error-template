@@ -90,7 +90,7 @@ const link = new ApolloLink(operation => {
 });
 
 /*** APP ***/
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { render } from "react-dom";
 import {
   ApolloClient,
@@ -138,17 +138,18 @@ function App() {
 
   const [id, setId] = useState(null)
 
-  const requestVars= {
+  // data is one render behind the variables
+  // https://github.com/apollographql/apollo-client/issues/9549
+  const {variables, laggedVariables} = useLaggedVariables(useMemo(()=>({
     id
-  };
+  }), [id]));
+
   const {
     loading:someLoading,
     data: someData,
-    networkStatus,
-    variables: responseVars
-  } = useQuery(SOME_PEOPLE, {variables: requestVars});
+  } = useQuery(SOME_PEOPLE, {variables});
 
-  console.log({requested: id, response: someData?.person.id, loading: someLoading, networkStatus, responseVariables: responseVars.id});
+  console.log({variables: variables.id, lagged: laggedVariables.id, response: someData?.person.id, loading: someLoading});
 
   const [addPerson] = useMutation(ADD_PERSON, {
     update: (cache, { data: { addPerson: addPersonData } }) => {
@@ -215,3 +216,14 @@ render(
   </ApolloProvider>,
   document.getElementById("root")
 );
+
+function useLaggedVariables(memoizedVariables) {
+  const [laggedVariables, setLaggedVariables] = useState(memoizedVariables);
+  useEffect(()=> {
+    setLaggedVariables(memoizedVariables);
+  }, [memoizedVariables])
+  return {
+    variables: memoizedVariables,
+    laggedVariables
+  }
+}
