@@ -90,7 +90,7 @@ const link = new ApolloLink(operation => {
 });
 
 /*** APP ***/
-import React, { useState } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { render } from "react-dom";
 import {
   ApolloClient,
@@ -138,15 +138,16 @@ function App() {
 
   const [id, setId] = useState(null)
 
-  const requestVars= {
-    id
-  };
   const {
     loading:someLoading,
     data: someData,
     networkStatus,
     variables: responseVars
-  } = useQuery(SOME_PEOPLE, {variables: requestVars});
+  } = useStrictQuery(SOME_PEOPLE, useMemo(() => ({
+    variables: {
+      id
+    }
+  }), [id]));
 
   console.log({requested: id, response: someData?.person.id, loading: someLoading, networkStatus, responseVariables: responseVars.id});
 
@@ -215,3 +216,15 @@ render(
   </ApolloProvider>,
   document.getElementById("root")
 );
+
+
+function useStrictQuery(query, options) {
+  const previousOptions = useRef(options);
+  const result = useQuery(query, options);
+  const fixedResult = {
+    ...result,
+    loading: result.loading || (previousOptions.current !== options)
+  }
+  previousOptions.current = options;
+  return fixedResult;
+}
