@@ -27,6 +27,16 @@ const QueryType = new GraphQLObjectType({
       type: new GraphQLList(PersonType),
       resolve: () => peopleData,
     },
+    person: {
+      type: PersonType,
+      args: {
+        id: { type: GraphQLID }
+      },
+      resolve: (a, b) => {
+        const id = Number(b.id);
+        return peopleData.find(p => p.id === id);
+      },
+    },
   },
 });
 
@@ -101,6 +111,15 @@ const ALL_PEOPLE = gql`
   }
 `;
 
+const SOME_PEOPLE= gql`
+  query PersonId($id: ID!) {
+    person(id: $id) {
+      id
+      name
+    }
+  }
+`;
+
 const ADD_PERSON = gql`
   mutation AddPerson($name: String) {
     addPerson(name: $name) {
@@ -116,6 +135,20 @@ function App() {
     loading,
     data,
   } = useQuery(ALL_PEOPLE);
+
+  const [id, setId] = useState(null)
+
+  const requestVars= {
+    id
+  };
+  const {
+    loading:someLoading,
+    data: someData,
+    networkStatus,
+    variables: responseVars
+  } = useQuery(SOME_PEOPLE, {variables: requestVars});
+
+  console.log({requested: id, response: someData?.person.id, loading: someLoading, networkStatus, responseVariables: responseVars.id});
 
   const [addPerson] = useMutation(ADD_PERSON, {
     update: (cache, { data: { addPerson: addPersonData } }) => {
@@ -163,7 +196,7 @@ function App() {
       ) : (
         <ul>
           {data?.people.map(person => (
-            <li key={person.id}>{person.name}</li>
+            <li key={person.id} onClick={() => setId(person.id)}>{person.name}</li>
           ))}
         </ul>
       )}
